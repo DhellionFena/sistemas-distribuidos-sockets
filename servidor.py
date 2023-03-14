@@ -17,7 +17,6 @@ class Servidor:
     
     def gerenciar_cliente(self, conexao, endereco):
         print(f"> Conexão encontrada! -> {endereco}")
-        conexao.send("> Conexão feita com sucesso!".encode())
 
         while True:
             try:
@@ -28,10 +27,39 @@ class Servidor:
                 if data == 'racobaldo':
                     data += ' + Gabi + Carro'
                     conexao.send(data.encode())
-                
-                # MINHA SUGESTAO PARA TRATAR DAS REQUISIÇÕES DO USUÁRIO
+
+                # acessando conta
                 if data[0]+data[1] == "01":
-                    self.criar_usuario()
+                    data = data.split(';')
+                    retorno = self.acessar_conta(data[1], data[2])
+                    if retorno[0] == 200:
+                        mensagem = '200;' + str(retorno[1]) + ';' + str(retorno[2])
+                        conexao.send(mensagem.encode())
+                    else:
+                        conexao.send("400;Algo deu errado :(".encode())
+
+                # criando nova conta
+                if data[0]+data[1] == "02":
+                    data = data.split(';')
+                    retorno = self.criar_usuario(data[1], data[2], data[3], data[4])
+                    if retorno == 200:
+                        conexao.send("Usuário criado com sucesso!".encode())
+                    else:
+                        conexao.send("Algo deu errado :(".encode())
+
+                # acessando saldo da conta
+                if data[0]+data[1] == "03":
+                    data = data.split(';')
+                    retorno = self.consultar_saldo(data[1])
+                    if retorno[0] == 200:
+                        mensagem = '200;' + str(retorno[1])
+                        conexao.send(mensagem.encode())
+                    else:
+                        conexao.send("400;Algo deu errado :(".encode())
+
+
+                if data[0]+data[1] == "00":
+                    self.mostrar_usuarios_banco()
 
             except ConnectionResetError:
                 break
@@ -40,7 +68,6 @@ class Servidor:
         print(f"> Conexão encerrada: {endereco}")
 
 
-    # Metodo *G E N E R I C O* para iniciar um banco *G E N E R I C O*
     def iniciar_banco(self):
 
         self.banco = sqlite3.connect('usuarios.db')
@@ -49,17 +76,73 @@ class Servidor:
         self.banco.execute('''CREATE TABLE IF NOT EXISTS usuarios
              (ID INTEGER PRIMARY KEY AUTOINCREMENT,
              NOME TEXT NOT NULL,
-             EMAIL TEXT NOT NULL,
-             SENHA TEXT NOT NULL);''')
+             EMAIL TEXT NOT NULL UNIQUE,
+             SENHA TEXT NOT NULL,
+             CPF TEXT NOT NULL UNIQUE);''')
+
+        self.banco.execute('''CREATE TABLE IF NOT EXISTS conta_corrente
+             (ID INTEGER PRIMARY KEY AUTOINCREMENT,
+             ID_CLIENTE INTEGER,
+             SALDO FLOAT NOT NULL,
+             FOREIGN KEY(ID_CLIENTE) REFERENCES usuarios(ID));''')
+
+        self.salvar_banco()
+        self.encerrar_conexao_banco()
+        
 
     def salvar_banco(self):
         self.banco.commit()
 
+
     def encerrar_conexao_banco(self):
         self.banco.close()
 
-    def criar_usuario(self):
-        pass
+    def criar_usuario(self, nome, email, senha, cpf):
+        try:
+            self.banco = sqlite3.connect('usuarios.db')
+            self.banco.execute('INSERT INTO usuarios (NOME, EMAIL, SENHA, CPF) VALUES (?, ?, ?, ?)', (nome, email, senha, cpf))
+
+            id_usuario = self.banco.execute('SELECT ID FROM usuarios WHERE CPF = ?', (cpf,)).fetchone()[0]
+            self.banco.execute('INSERT INTO conta_corrente (ID_CLIENTE, SALDO) VALUES (?, ?)', (id_usuario, 0))
+            self.salvar_banco()
+            self.encerrar_conexao_banco()
+            return 200
+        except:
+            return 400
+        
+
+    def acessar_conta(self, email, senha):
+        try:
+            self.banco = sqlite3.connect('usuarios.db')
+            cliente = self.banco.execute('SELECT * FROM usuarios WHERE EMAIL = ? AND SENHA = ?', (email, senha))
+            for i in cliente:
+                id_cliente = i[0]
+                nome = i[1]
+            id_conta_cliente = self.banco.execute('SELECT ID FROM conta_corrente WHERE ID_CLIENTE = ?', (id_cliente,)).fetchone()[0]
+            self.salvar_banco()
+            self.encerrar_conexao_banco()
+
+            return [200, id_conta_cliente, nome]
+        except:
+            return (400, 'erro')
+
+    def consultar_saldo(self, id_conta):
+        try:
+            self.banco = sqlite3.connect('usuarios.db')
+            saldo = self.banco.execute('SELECT SALDO FROM conta_corrente WHERE ID = ?', (id_conta,)).fetchone()[0]
+            self.salvar_banco()
+            self.encerrar_conexao_banco()
+
+            return [200, saldo]
+        except:
+            return (400, 'erro')
+
+    def mostrar_usuarios_banco(self):
+        self.banco = sqlite3.connect('usuarios.db')
+        usuarios = self.banco.execute('SELECT * FROM usuarios')
+        for usuario in usuarios:
+            print(usuario)
+        self.encerrar_conexao_banco()
 
     def start(self):
         while True:
@@ -68,5 +151,5 @@ class Servidor:
             thread.start()
 
 if __name__ == '__main__':
-    server = Servidor('localhost', 6969)
+    server = Servidor('localhost', 6960)
     server.start()

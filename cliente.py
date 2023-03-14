@@ -7,6 +7,7 @@ class Cliente:
         self.cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.HOST = HOST
         self.PORT = PORT
+        self.conta_acessada = False
         
     
     def iniciar_conexao(self):
@@ -22,36 +23,99 @@ class Cliente:
         print("> Encerrando conexão")
         self.cliente.close()
 
-    # TODO REFORMULAR ISSO
     def criar_usuario(self):
-        self.cliente.send("01".encode())
+        nome = input("> Insira seu nome:\n> ")
+        email = input("> Insira seu email:\n> ")
+        senha = input("> Insira seu senha:\n> ")
+        cpf = input("> Insira seu cpf:\n> ")
+        mensagem = "02;"+ nome + ";" + email + ";" + senha + ";" + cpf
+        self.cliente.send(mensagem.encode())
+        data = self.cliente.recv(1024).decode()
+        print("> " + data)
+
+    def acessar_conta(self):
+        email = input("> Insira seu email:\n> ")
+        senha = input("> Insira seu senha:\n> ")
+        mensagem = "01;" + email + ";" + senha
+        self.cliente.send(mensagem.encode())
+        data = self.cliente.recv(1024).decode()
+        data = data.split(';')
+        if (data[0] == '200'):
+            self.conta_acessada = True
+            self.id_conta = data[1]
+            self.nome = data[2]
+        else:
+            print("> Algum erro aconteceu.")
+
+    def consultar_saldo(self):
+        mensagem = "03;" + self.id_conta
+        self.cliente.send(mensagem.encode())
+        data = self.cliente.recv(1024).decode()
+        data = data.split(';')
+        if (data[0] == '200'):
+            print("> Seu Saldo é de: R$" + data[1])
+            self.conta_acessada = True
+            self.saldo = data[1]
+        else:
+            print("> Algum erro aconteceu.")
+
     
     def start(self):
         # PRINTAR TODAS AS OPCOES DO CLIENTE E MANTER DENTRO DE UM LOOP TIPO UM MENU
         self.iniciar_conexao()
-        os.system('pause')
 
         while True:
-            print("> Escolha as opções:")
-            print("[1] racobaldo")
-            print("[2] Criar usuario")
-            print("[0] Finalizar Conexão")
-            resposta = int(input())
+            os.system("cls")
+            if not self.conta_acessada:
+                print("> Escolha as opções:")
+                print("[1] Acessar Conta")
+                print("[2] Criar Conta")
+                print("[3] Mostrar todos os usuarios")
+                print("[0] Finalizar Conexão")
+                resposta = int(input("> "))
 
-            if resposta == 1:
-                self.testar_conexao()
-                os.system("pause")
-            elif resposta == 2:
-                self.criar_usuario()
-                os.system("pause")
-            elif resposta == 0:
-                self.encerrar_conexao()
-                break
+                if resposta == 69:
+                    self.testar_conexao()
+                    os.system("pause")
+                elif resposta == 1:
+                    self.acessar_conta()
+                    os.system("pause")
+                elif resposta == 2:
+                    self.criar_usuario()
+                    os.system("pause")
+                elif resposta == 3:
+                    self.cliente.send("00".encode())
+                    os.system("pause")
+                elif resposta == 0:
+                    self.encerrar_conexao()
+                    break
+                else:
+                    print("> Opção Inválida!")
+                    os.system("pause")
             else:
-                print("> Resposta Inválida!")
-                os.system("pause")
+                print("> Olá " + self.nome + "! O que deseja fazer?")
+                print("[1] Creditar Conta")
+                print("[2] Debitar Conta")
+                print("[3] Acessar Saldo")
+                print("[0] Finalizar Conexão")
+                resposta = int(input("> "))
+
+                if resposta == 1:
+                    os.system("pause")
+                elif resposta == 2:
+                    os.system("pause")
+                elif resposta == 3:
+                    self.consultar_saldo()
+                    os.system("pause")
+                elif resposta == 0:
+                    self.encerrar_conexao()
+                    break
+                else:
+                    print("> Opção Inválida!")
+                    os.system("pause")
+
 
 
 if __name__ == '__main__':
-    cliente = Cliente('localhost', 6969)
+    cliente = Cliente('localhost', 6960)
     cliente.start()
