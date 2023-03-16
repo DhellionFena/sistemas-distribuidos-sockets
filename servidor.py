@@ -24,8 +24,8 @@ class Servidor:
                 if not data:
                     break
 
-                if data == 'racobaldo':
-                    data += ' + Gabi + Carro'
+                if data == 'teste':
+                    data += '> Conexão existe!'
                     conexao.send(data.encode())
 
                 # acessando conta
@@ -33,7 +33,7 @@ class Servidor:
                     data = data.split(';')
                     retorno = self.acessar_conta(data[1], data[2])
                     if retorno[0] == 200:
-                        mensagem = '200;' + str(retorno[1]) + ';' + str(retorno[2])
+                        mensagem = '200;' + str(retorno[1]) + ';' + str(retorno[2]) + ';' + str(retorno[3])
                         conexao.send(mensagem.encode())
                     else:
                         conexao.send("400;Algo deu errado :(".encode())
@@ -56,6 +56,37 @@ class Servidor:
                         conexao.send(mensagem.encode())
                     else:
                         conexao.send("400;Algo deu errado :(".encode())
+
+                # creditando saldo na conta
+                if data[0]+data[1] == "04":
+                    data = data.split(';')
+                    retorno = self.creditar_conta(data[1], float(data[2]))
+                    if retorno[0] == 200:
+                        mensagem = '200'
+                        conexao.send(mensagem.encode())
+                    else:
+                        conexao.send("400;Algo deu errado :(".encode())
+
+                # creditando saldo na conta
+                if data[0]+data[1] == "05":
+                    data = data.split(';')
+                    retorno = self.debitar_conta(data[1], float(data[2]))
+                    if retorno[0] == 200:
+                        mensagem = '200'
+                        conexao.send(mensagem.encode())
+                    else:
+                        conexao.send("400;Algo deu errado :(".encode())
+
+                # encerrando a conta
+                if data[0]+data[1] == "06":
+                    data = data.split(';')
+                    retorno = self.encerrar_conta(data[1], data[2])
+                    if retorno[0] == 200:
+                        mensagem = '200;' + retorno[1]
+                        conexao.send(mensagem.encode())
+                    else:
+                        mensagem = retorno[1]
+                        conexao.send(mensagem.encode())
 
 
                 if data[0]+data[1] == "00":
@@ -109,7 +140,7 @@ class Servidor:
             return 200
         except:
             return 400
-        
+
 
     def acessar_conta(self, email, senha):
         try:
@@ -122,7 +153,7 @@ class Servidor:
             self.salvar_banco()
             self.encerrar_conexao_banco()
 
-            return [200, id_conta_cliente, nome]
+            return [200, id_conta_cliente, nome, id_cliente]
         except:
             return (400, 'erro')
 
@@ -136,6 +167,45 @@ class Servidor:
             return [200, saldo]
         except:
             return (400, 'erro')
+    
+    def creditar_conta(self, id_conta, valor):
+        try:
+            self.banco = sqlite3.connect('usuarios.db')
+            self.banco.execute('UPDATE conta_corrente SET SALDO = SALDO + ? WHERE ID = ?', (valor, id_conta))
+            self.salvar_banco()
+            self.encerrar_conexao_banco()
+
+            return [200]
+        except:
+            return (400, 'erro')
+
+    def debitar_conta(self, id_conta, valor):
+        try:
+            self.banco = sqlite3.connect('usuarios.db')
+            self.banco.execute('UPDATE conta_corrente SET SALDO = SALDO - ? WHERE ID = ?', (valor, id_conta))
+            self.salvar_banco()
+            self.encerrar_conexao_banco()
+
+            return [200]
+        except:
+            return (400, 'erro')
+
+    def encerrar_conta(self, id_conta, id_cliente):
+        # try:
+        self.banco = sqlite3.connect('usuarios.db')
+        saldo = self.banco.execute("SELECT SALDO FROM conta_corrente WHERE ID=?", (id_conta,)).fetchone()[0]
+        if saldo == 0:
+            self.banco.execute("DELETE FROM usuarios WHERE ID=?", (id_cliente,))
+            self.banco.execute("DELETE FROM conta_corrente WHERE ID=?", (id_conta,))
+            mensagem = "> Conta encerrada com sucesso!"
+        else:
+            mensagem = "> Conta não pode ser encerrada pois ainda possui saldo diferente de zero."
+        self.salvar_banco()
+        self.encerrar_conexao_banco()
+        return [200, mensagem]
+        # except:
+        #     return (400, 'erro')
+
 
     def mostrar_usuarios_banco(self):
         self.banco = sqlite3.connect('usuarios.db')
