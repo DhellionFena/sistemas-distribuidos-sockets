@@ -89,6 +89,8 @@ class Cliente:
         if (data[0] == '200'):
             print(data[1])
             self.conta_acessada = False
+        elif (data[0] == '202'):
+            print(data[1])
         else:
             print("> Algum erro aconteceu.")
 

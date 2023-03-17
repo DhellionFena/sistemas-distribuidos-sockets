@@ -82,10 +82,10 @@ class Servidor:
                     data = data.split(';')
                     retorno = self.encerrar_conta(data[1], data[2])
                     if retorno[0] == 200:
-                        mensagem = '200;' + retorno[1]
+                        mensagem = str(retorno[0]) + ';' + retorno[1]
                         conexao.send(mensagem.encode())
                     else:
-                        mensagem = retorno[1]
+                        mensagem = str(retorno[0]) + ';' + retorno[1]
                         conexao.send(mensagem.encode())
 
 
@@ -198,11 +198,13 @@ class Servidor:
             self.banco.execute("DELETE FROM usuarios WHERE ID=?", (id_cliente,))
             self.banco.execute("DELETE FROM conta_corrente WHERE ID=?", (id_conta,))
             mensagem = "> Conta encerrada com sucesso!"
+            codigo = 200
         else:
             mensagem = "> Conta não pode ser encerrada pois ainda possui saldo diferente de zero."
+            codigo = 202
         self.salvar_banco()
         self.encerrar_conexao_banco()
-        return [200, mensagem]
+        return [codigo, mensagem]
         # except:
         #     return (400, 'erro')
 
