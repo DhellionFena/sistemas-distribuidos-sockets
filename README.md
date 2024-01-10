@@ -1,4 +1,4 @@
-# Sistemas distribuidos
+# Sistemas distribuídos
 O projeto consiste na utilização de Sockets para simular uma comunicação entre sistemas distribuidos, no caso, entre cliente e servidor.
 
 ## Equipe
